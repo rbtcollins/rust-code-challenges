@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::Result;
+use std::io::{Error, ErrorKind, Result, Write};
 
 use clap::Parser;
 use rand::Rng;
@@ -62,10 +62,15 @@ fn main() -> Result<()> {
             .entry(from)
             .or_insert(Vec::new())
             .push((to, cost));
+        // Make sure the target of this edge is present in the edges table.
+        graph.edges.entry(to).or_insert(Vec::new());
         inverse_edges.entry(to).or_insert(Vec::new()).push(from);
     }
-    let output = File::create(args.graph_path)?;
-    serde_json::to_writer(output, &graph)?;
+    let mut output = File::create(args.graph_path)?;
+    output.write_all(
+        &bincode::serialize(&graph).map_err(|e| Error::new(ErrorKind::Other, format!("{e:?}")))?,
+    )?;
+    drop(output);
 
     println!("Created graph");
     Ok(())

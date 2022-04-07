@@ -1,4 +1,8 @@
-use std::{fs::File, io::Result, time::Instant};
+use std::{
+    fs::File,
+    io::{Error, ErrorKind, Read, Result},
+    time::Instant,
+};
 
 use clap::Parser;
 
@@ -14,9 +18,11 @@ struct Cli {
 
 fn main() -> Result<()> {
     let args = Cli::parse();
-    let input = File::open(&args.graph_path)?;
-    let input = std::io::BufReader::with_capacity(1024 * 1024, input);
-    let graph: Graph = serde_json::from_reader(input)?;
+    let mut input = File::open(&args.graph_path)?;
+    let mut buf = vec![];
+    input.read_to_end(&mut buf)?;
+    let graph: Graph = bincode::deserialize(&buf[..])
+        .map_err(|e| Error::new(ErrorKind::Other, format!("{e:?}")))?;
     let start = Instant::now();
     let route = graph.ospf(args.from, args.to);
     let duration = Instant::now() - start;
